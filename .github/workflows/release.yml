@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Build extension
+        run: |
+          mkdir -p dist
+          cp manifest.json dist/
+          cp content.js dist/
+          cp background.js dist/
+          cp popup.html dist/
+          cp popup.js dist/
+
+      - name: Create extension zip
+        run: |
+          cd dist
+          zip -r ../auto-text-zoom-${{ github.event.release.tag_name }}.zip .
+          cd ..
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./auto-text-zoom-${{ github.event.release.tag_name }}.zip
+          asset_name: auto-text-zoom-${{ github.event.release.tag_name }}.zip
+          asset_content_type: application/zip
